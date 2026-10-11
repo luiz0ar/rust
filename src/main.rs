@@ -1,23 +1,11 @@
-mod database;
-mod errors;
-mod handlers;
-mod middlewares;
-mod models;
-mod repositories;
-mod routes;
-mod services;
-
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::Router;
-use handlers::AppState;
-use repositories::{RefreshTokenRepository, UserRepository};
-use services::{AuthService, UserService};
-
-async fn root() -> &'static str {
-    "Hello, World!"
-}
+use src::create_app;
+use src::database;
+use src::handlers::AppState;
+use src::repositories::{RefreshTokenRepository, UserRepository};
+use src::services::{AuthService, UserService};
 
 #[tokio::main]
 async fn main() {
@@ -38,10 +26,7 @@ async fn main() {
         auth_service,
     };
 
-    let app = Router::new()
-        .route("/", axum::routing::get(root))
-        .merge(routes::routes())
-        .with_state(state);
+    let app = create_app(state);
 
     let addr: SocketAddr = format!("{}:{}", host, port)
         .parse()

@@ -65,12 +65,12 @@ impl UserService {
                 return Err(AppError::BadRequest("Invalid email address".to_string()));
             }
 
-            if let Some(existing) = self.repo.find_by_email(email).await? {
-                if existing.id != id {
-                    return Err(AppError::Conflict(
-                        "Email is already registered".to_string(),
-                    ));
-                }
+            if let Some(existing) = self.repo.find_by_email(email).await?
+                && existing.id != id
+            {
+                return Err(AppError::Conflict(
+                    "Email is already registered".to_string(),
+                ));
             }
         }
 
