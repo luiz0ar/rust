@@ -3,9 +3,9 @@ use serde_json::{Value, json};
 
 use crate::errors::AppError;
 use crate::handlers::AppState;
+use crate::middlewares::BearerToken;
 use crate::models::auth::{AuthResponse, RefreshTokenDto};
-use crate::models::user::{LoginDto, User};
-use crate::services::Claims;
+use crate::models::user::{LoginDto, UserProfile};
 
 pub async fn login(
     State(state): State<AppState>,
@@ -33,7 +33,10 @@ pub async fn logout(
     })))
 }
 
-pub async fn me(claims: Claims, State(state): State<AppState>) -> Result<Json<User>, AppError> {
-    let user = state.user_service.get_user_by_id(claims.sub).await?;
-    Ok(Json(user))
+pub async fn profile(
+    bearer_token: BearerToken,
+    State(state): State<AppState>,
+) -> Result<Json<UserProfile>, AppError> {
+    let user_profile = state.user_service.profile(&bearer_token.0).await?;
+    Ok(Json(user_profile))
 }

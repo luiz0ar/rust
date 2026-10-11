@@ -19,7 +19,7 @@ async fn main() {
 
     let user_repo = UserRepository::new(pool.clone());
     let refresh_token_repo = RefreshTokenRepository::new(pool);
-    let user_service = Arc::new(UserService::new(user_repo.clone()));
+    let user_service = Arc::new(UserService::new(user_repo.clone(), refresh_token_repo.clone()));
     let auth_service = Arc::new(AuthService::new(user_repo, refresh_token_repo));
     let state = AppState {
         user_service,

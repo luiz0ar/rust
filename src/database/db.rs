@@ -13,7 +13,8 @@ pub async fn init_db() -> SqlitePool {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             email TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            token_version INTEGER NOT NULL DEFAULT 1
         );
 
         CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email);
@@ -34,6 +35,11 @@ pub async fn init_db() -> SqlitePool {
     .execute(&pool)
     .await
     .expect("Failed to initialize database table");
+
+    // Idempotent migration for existing SQLite databases
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1")
+        .execute(&pool)
+        .await;
 
     pool
 }

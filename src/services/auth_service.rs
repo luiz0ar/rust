@@ -44,7 +44,7 @@ impl AuthService {
             ));
         }
 
-        let access_token = generate_access_token(user.id, &user.email)?;
+        let access_token = generate_access_token(user.id, &user.email, user.token_version)?;
         let refresh_token = generate_refresh_token();
         let now = current_timestamp();
         let expires_at = refresh_token_expiration();
@@ -97,7 +97,7 @@ impl AuthService {
             .delete_by_token(&dto.refresh_token)
             .await?;
 
-        let access_token = generate_access_token(user.id, &user.email)?;
+        let access_token = generate_access_token(user.id, &user.email, user.token_version)?;
         let new_refresh_token = generate_refresh_token();
         let new_expires_at = refresh_token_expiration();
 
@@ -120,9 +120,18 @@ impl AuthService {
             ));
         }
 
-        self.refresh_token_repo
-            .delete_by_token(&dto.refresh_token)
+        let stored_token = self
+            .refresh_token_repo
+            .find_by_token(&dto.refresh_token)
             .await?;
+
+        if let Some(token) = stored_token {
+            let _ = self.user_repo.increment_token_version(token.user_id).await;
+            self.refresh_token_repo
+                .delete_by_token(&dto.refresh_token)
+                .await?;
+        }
+
         Ok(())
     }
 }

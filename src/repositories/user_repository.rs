@@ -12,12 +12,14 @@ impl UserRepository {
     }
 
     pub async fn create(&self, dto: &CreateUserDto) -> Result<User, sqlx::Error> {
-        let result = sqlx::query("INSERT INTO users (name, email, password) VALUES (?, ?, ?)")
-            .bind(&dto.name)
-            .bind(&dto.email)
-            .bind(&dto.password)
-            .execute(&self.pool)
-            .await?;
+        let result = sqlx::query(
+            "INSERT INTO users (name, email, password, token_version) VALUES (?, ?, ?, 1)",
+        )
+        .bind(&dto.name)
+        .bind(&dto.email)
+        .bind(&dto.password)
+        .execute(&self.pool)
+        .await?;
 
         let id = result.last_insert_rowid();
 
@@ -25,17 +27,18 @@ impl UserRepository {
             id,
             name: dto.name.clone(),
             email: dto.email.clone(),
+            token_version: 1,
         })
     }
 
     pub async fn find_all(&self) -> Result<Vec<User>, sqlx::Error> {
-        sqlx::query_as::<_, User>("SELECT id, name, email FROM users")
+        sqlx::query_as::<_, User>("SELECT id, name, email, token_version FROM users")
             .fetch_all(&self.pool)
             .await
     }
 
     pub async fn find_by_id(&self, id: i64) -> Result<Option<User>, sqlx::Error> {
-        sqlx::query_as::<_, User>("SELECT id, name, email FROM users WHERE id = ?")
+        sqlx::query_as::<_, User>("SELECT id, name, email, token_version FROM users WHERE id = ?")
             .bind(id)
             .fetch_optional(&self.pool)
             .await
@@ -46,11 +49,25 @@ impl UserRepository {
         email: &str,
     ) -> Result<Option<UserWithPassword>, sqlx::Error> {
         sqlx::query_as::<_, UserWithPassword>(
-            "SELECT id, name, email, password FROM users WHERE email = ?",
+            "SELECT id, name, email, password, token_version FROM users WHERE email = ?",
         )
         .bind(email)
         .fetch_optional(&self.pool)
         .await
+    }
+
+    pub async fn increment_token_version(&self, id: i64) -> Result<i64, sqlx::Error> {
+        sqlx::query("UPDATE users SET token_version = token_version + 1 WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+
+        let row: Option<(i64,)> = sqlx::query_as("SELECT token_version FROM users WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(row.map(|(v,)| v).unwrap_or(1))
     }
 
     pub async fn update(&self, id: i64, dto: &UpdateUserDto) -> Result<Option<User>, sqlx::Error> {

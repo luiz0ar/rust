@@ -1,0 +1,21 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./.docker/Dockerfile
+    container_name: rust-api
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-default-dev-jwt-secret-key-for-local-development}
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - sqlite-data:/app
+    restart: unless-stopped
+
+volumes:
+  sqlite-data:

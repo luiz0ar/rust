@@ -1,0 +1,26 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./.docker/Dockerfile.dev
+    container_name: rust-api-dev
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-default-dev-jwt-secret-key-for-local-development}
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - .:/app
+      - target_cache:/app/target
+      - cargo_cache:/usr/local/cargo/registry
+      - cargo_git_cache:/usr/local/cargo/git
+    restart: unless-stopped
+
+volumes:
+  target_cache:
+  cargo_cache:
+  cargo_git_cache:

@@ -1,0 +1,23 @@
+# Build artifacts
+target/
+
+# Version control
+.git/
+.github/
+
+# Environment files
+.env
+
+# Local SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Docker & CI files
+.docker/Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Tests and documentation
+tests/
+*.md

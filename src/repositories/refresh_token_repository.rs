@@ -49,6 +49,18 @@ impl RefreshTokenRepository {
         .await
     }
 
+    pub async fn find_latest_by_user_id(
+        &self,
+        user_id: i64,
+    ) -> Result<Option<RefreshToken>, sqlx::Error> {
+        sqlx::query_as::<_, RefreshToken>(
+            "SELECT id, user_id, token, expires_at, created_at FROM refresh_tokens WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
     pub async fn delete_by_token(&self, token: &str) -> Result<bool, sqlx::Error> {
         let result = sqlx::query("DELETE FROM refresh_tokens WHERE token = ?")
             .bind(token)

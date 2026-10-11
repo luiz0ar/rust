@@ -8,6 +8,7 @@ use crate::errors::AppError;
 pub struct Claims {
     pub sub: i64,
     pub email: String,
+    pub token_version: i64,
     pub exp: usize,
     pub iat: usize,
 }
@@ -37,12 +38,17 @@ pub fn generate_refresh_token() -> String {
     random_bytes.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
-pub fn generate_access_token(user_id: i64, email: &str) -> Result<String, AppError> {
+pub fn generate_access_token(
+    user_id: i64,
+    email: &str,
+    token_version: i64,
+) -> Result<String, AppError> {
     let now = current_timestamp() as usize;
 
     let claims = Claims {
         sub: user_id,
         email: email.to_string(),
+        token_version,
         exp: now + ACCESS_TOKEN_EXPIRATION,
         iat: now,
     };
@@ -57,8 +63,12 @@ pub fn generate_access_token(user_id: i64, email: &str) -> Result<String, AppErr
 }
 
 #[allow(dead_code)]
-pub fn generate_token(user_id: i64, email: &str) -> Result<String, AppError> {
-    generate_access_token(user_id, email)
+pub fn generate_token(
+    user_id: i64,
+    email: &str,
+    token_version: i64,
+) -> Result<String, AppError> {
+    generate_access_token(user_id, email, token_version)
 }
 
 pub fn verify_token(token: &str) -> Result<Claims, AppError> {
