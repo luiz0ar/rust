@@ -12,14 +12,12 @@ impl UserRepository {
     }
 
     pub async fn create(&self, dto: &CreateUserDto) -> Result<User, sqlx::Error> {
-        let result = sqlx::query(
-            "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-        )
-        .bind(&dto.name)
-        .bind(&dto.email)
-        .bind(&dto.password)
-        .execute(&self.pool)
-        .await?;
+        let result = sqlx::query("INSERT INTO users (name, email, password) VALUES (?, ?, ?)")
+            .bind(&dto.name)
+            .bind(&dto.email)
+            .bind(&dto.password)
+            .execute(&self.pool)
+            .await?;
 
         let id = result.last_insert_rowid();
 
@@ -43,11 +41,16 @@ impl UserRepository {
             .await
     }
 
-    pub async fn find_by_email(&self, email: &str) -> Result<Option<UserWithPassword>, sqlx::Error> {
-        sqlx::query_as::<_, UserWithPassword>("SELECT id, name, email, password FROM users WHERE email = ?")
-            .bind(email)
-            .fetch_optional(&self.pool)
-            .await
+    pub async fn find_by_email(
+        &self,
+        email: &str,
+    ) -> Result<Option<UserWithPassword>, sqlx::Error> {
+        sqlx::query_as::<_, UserWithPassword>(
+            "SELECT id, name, email, password FROM users WHERE email = ?",
+        )
+        .bind(email)
+        .fetch_optional(&self.pool)
+        .await
     }
 
     pub async fn update(&self, id: i64, dto: &UpdateUserDto) -> Result<Option<User>, sqlx::Error> {

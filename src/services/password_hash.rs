@@ -1,6 +1,6 @@
 use argon2::{
-    password_hash::{phc::PasswordHash, PasswordHasher, PasswordVerifier},
     Argon2,
+    password_hash::{PasswordHasher, PasswordVerifier, phc::PasswordHash},
 };
 
 pub fn hash_password(password: &str) -> Result<String, String> {
@@ -14,8 +14,8 @@ pub fn hash_password(password: &str) -> Result<String, String> {
 
 #[allow(dead_code)]
 pub fn verify_password(password: &str, password_hash: &str) -> Result<bool, String> {
-    let parsed_hash = PasswordHash::new(password_hash)
-        .map_err(|e| format!("Invalid password hash: {}", e))?;
+    let parsed_hash =
+        PasswordHash::new(password_hash).map_err(|e| format!("Invalid password hash: {}", e))?;
 
     Ok(Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)

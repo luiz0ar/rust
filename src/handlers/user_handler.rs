@@ -1,18 +1,19 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 use crate::errors::AppError;
 use crate::models::user::{CreateUserDto, UpdateUserDto, User};
-use crate::services::UserService;
+use crate::services::{AuthService, UserService};
 
 #[derive(Clone)]
 pub struct AppState {
     pub user_service: Arc<UserService>,
+    pub auth_service: Arc<AuthService>,
 }
 
 pub async fn create_user(

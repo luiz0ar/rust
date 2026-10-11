@@ -1,4 +1,4 @@
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -12,23 +12,38 @@ pub struct Claims {
     pub iat: usize,
 }
 
+pub const ACCESS_TOKEN_EXPIRATION: usize = 15 * 60; // 15 minutes - 900 seconds
+pub const REFRESH_TOKEN_EXPIRATION_DAYS: i64 = 7; // 7 days - 604800 seconds
+
 fn get_jwt_secret() -> Vec<u8> {
     std::env::var("JWT_SECRET")
         .expect("JWT_SECRET environment variable must be set")
         .into_bytes()
 }
 
-pub fn generate_token(user_id: i64, email: &str) -> Result<String, AppError> {
-    let now = SystemTime::now()
+pub fn current_timestamp() -> i64 {
+    SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|e| AppError::Internal(format!("System clock error: {}", e)))?
-        .as_secs() as usize;
+        .unwrap_or_default()
+        .as_secs() as i64
+}
 
-    let expiration_seconds = 24 * 60 * 60; // 24 hours
+pub fn refresh_token_expiration() -> i64 {
+    current_timestamp() + (REFRESH_TOKEN_EXPIRATION_DAYS * 24 * 60 * 60)
+}
+
+pub fn generate_refresh_token() -> String {
+    let random_bytes: [u8; 32] = rand::random();
+    random_bytes.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
+pub fn generate_access_token(user_id: i64, email: &str) -> Result<String, AppError> {
+    let now = current_timestamp() as usize;
+
     let claims = Claims {
         sub: user_id,
         email: email.to_string(),
-        exp: now + expiration_seconds,
+        exp: now + ACCESS_TOKEN_EXPIRATION,
         iat: now,
     };
 
@@ -39,6 +54,11 @@ pub fn generate_token(user_id: i64, email: &str) -> Result<String, AppError> {
         &EncodingKey::from_secret(&secret),
     )
     .map_err(|e| AppError::Internal(format!("Failed to generate JWT token: {}", e)))
+}
+
+#[allow(dead_code)]
+pub fn generate_token(user_id: i64, email: &str) -> Result<String, AppError> {
+    generate_access_token(user_id, email)
 }
 
 pub fn verify_token(token: &str) -> Result<Claims, AppError> {

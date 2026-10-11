@@ -4,7 +4,7 @@ use axum::{
 };
 
 use crate::errors::AppError;
-use crate::services::jwt_service::{verify_token, Claims};
+use crate::services::jwt_service::{Claims, verify_token};
 
 impl<S> FromRequestParts<S> for Claims
 where
@@ -23,7 +23,7 @@ where
             _ => {
                 return Err(AppError::Unauthorized(
                     "Missing or malformed authorization token (use 'Bearer <token>')".to_string(),
-                ))
+                ));
             }
         };
 
