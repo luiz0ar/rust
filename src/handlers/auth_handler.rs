@@ -11,10 +11,11 @@ use crate::models::user::{LoginDto, UserProfile};
     path = "/login",
     tag = "Auth",
     summary = "User login",
-    description = "Authenticates user with email and password, returning JWT access and refresh tokens.",
+    description = "Authenticates user with email and password, returning JWT access and refresh tokens. Protected by constant-time response lock security to mitigate timing attacks and brute-force enumeration.",
     request_body = LoginDto,
     responses(
         (status = 200, description = "Login successful", body = AuthResponse),
+        (status = 400, description = "Invalid request payload", body = ErrorResponse),
         (status = 401, description = "Invalid credentials", body = ErrorResponse)
     )
 )]

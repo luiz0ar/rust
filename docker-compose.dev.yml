@@ -11,6 +11,7 @@ services:
       - PORT=3000
       - JWT_SECRET=${JWT_SECRET:-default-dev-jwt-secret-key-for-local-development}
       - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-app_db}
+      - LOGIN_TIME_LOCK_MS=${LOGIN_TIME_LOCK_MS:-1000}
     env_file:
       - path: .env
         required: false

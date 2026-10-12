@@ -1,3 +1,7 @@
+use std::time::Duration;
+
+use tokio::time::Instant;
+
 use crate::errors::AppError;
 use crate::models::auth::{AuthResponse, RefreshTokenDto};
 use crate::models::user::LoginDto;
@@ -6,43 +10,80 @@ use crate::services::jwt_service::{
     ACCESS_TOKEN_EXPIRATION, current_timestamp, generate_access_token, generate_refresh_token,
     refresh_token_expiration,
 };
-use crate::services::password_hash::verify_password;
+use crate::services::password_hash::{DUMMY_ARGON2_HASH, verify_password};
 
 #[derive(Clone)]
 pub struct AuthService {
     user_repo: UserRepository,
     refresh_token_repo: RefreshTokenRepository,
+    time_lock_duration: Duration,
 }
 
 impl AuthService {
     pub fn new(user_repo: UserRepository, refresh_token_repo: RefreshTokenRepository) -> Self {
+        let time_lock_ms: u64 = std::env::var("LOGIN_TIME_LOCK_MS")
+            .expect("LOGIN_TIME_LOCK_MS environment variable must be set in .env")
+            .parse()
+            .expect("LOGIN_TIME_LOCK_MS must be a valid integer");
+
         Self {
             user_repo,
             refresh_token_repo,
+            time_lock_duration: Duration::from_millis(time_lock_ms),
         }
     }
 
+    pub fn with_time_lock_duration(mut self, duration: Duration) -> Self {
+        self.time_lock_duration = duration;
+        self
+    }
+
+    pub fn time_lock_duration(&self) -> Duration {
+        self.time_lock_duration
+    }
+
+    /// Authenticates user and enforces a constant-time response lock.
+    /// Regardless of whether the login succeeds or fails (invalid password, unknown email,
+    /// empty fields, etc.), the response will only be returned after the configured time lock window.
     pub async fn login(&self, dto: LoginDto) -> Result<AuthResponse, AppError> {
+        let start = Instant::now();
+        let result = self.execute_login(dto).await;
+
+        let elapsed = start.elapsed();
+        if elapsed < self.time_lock_duration {
+            tokio::time::sleep(self.time_lock_duration - elapsed).await;
+        }
+
+        result
+    }
+
+    async fn execute_login(&self, dto: LoginDto) -> Result<AuthResponse, AppError> {
         if dto.email.trim().is_empty() || dto.password.trim().is_empty() {
             return Err(AppError::BadRequest(
                 "Email and password are required".to_string(),
             ));
         }
 
-        let user = self
-            .user_repo
-            .find_by_email(&dto.email)
-            .await?
-            .ok_or_else(|| AppError::Unauthorized("Invalid email or password".to_string()))?;
+        let user_opt = self.user_repo.find_by_email(&dto.email).await?;
 
-        let is_valid =
-            verify_password(&dto.password, &user.password).map_err(AppError::Internal)?;
+        let (user, password_hash) = match user_opt {
+            Some(user) => {
+                let hash = user.password.clone();
+                (Some(user), hash)
+            }
+            None => (None, DUMMY_ARGON2_HASH.to_string()),
+        };
 
-        if !is_valid {
-            return Err(AppError::Unauthorized(
-                "Invalid email or password".to_string(),
-            ));
-        }
+        let is_valid = verify_password(&dto.password, &password_hash).unwrap_or(false);
+
+        let user = match user {
+            Some(u) if is_valid => u,
+            _ => {
+                return Err(AppError::Unauthorized(
+                    "Invalid email or password".to_string(),
+                ));
+            }
+        };
 
         let access_token = generate_access_token(user.id, &user.email, user.token_version)?;
         let refresh_token = generate_refresh_token();

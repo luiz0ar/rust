@@ -15,10 +15,11 @@ use utoipa_scalar::{Scalar, Servable};
 use crate::docs::ApiDoc;
 
 pub fn create_app(state: AppState) -> Router {
+    let routes = routes::routes(&state);
     Router::new()
         .route("/", axum::routing::get(root))
         .route("/api-docs/openapi.json", axum::routing::get(openapi_json))
-        .merge(routes::routes())
+        .merge(routes)
         .merge(Scalar::with_url("/docs", ApiDoc::build_spec()))
         .with_state(state)
 }

@@ -10,9 +10,18 @@ use src::repositories::{RefreshTokenRepository, UserRepository};
 use src::services::{AuthService, UserService};
 
 pub async fn setup_test_app() -> Router {
+    setup_test_app_with_lock(std::time::Duration::from_millis(50)).await
+}
+
+pub async fn setup_test_app_with_lock(lock_duration: std::time::Duration) -> Router {
     if std::env::var("JWT_SECRET").is_err() {
         unsafe {
             std::env::set_var("JWT_SECRET", "test-secret-key-for-e2e-automated-tests");
+        }
+    }
+    if std::env::var("LOGIN_TIME_LOCK_MS").is_err() {
+        unsafe {
+            std::env::set_var("LOGIN_TIME_LOCK_MS", "50");
         }
     }
 
@@ -31,7 +40,6 @@ pub async fn setup_test_app() -> Router {
         .await
         .expect("Failed to apply database migrations for tests");
 
-    // Clean tables before tests to ensure test isolation
     sqlx::query("TRUNCATE TABLE refresh_tokens, users RESTART IDENTITY CASCADE")
         .execute(&pool)
         .await
@@ -43,7 +51,9 @@ pub async fn setup_test_app() -> Router {
         user_repo.clone(),
         refresh_token_repo.clone(),
     ));
-    let auth_service = Arc::new(AuthService::new(user_repo, refresh_token_repo));
+    let auth_service = Arc::new(
+        AuthService::new(user_repo, refresh_token_repo).with_time_lock_duration(lock_duration),
+    );
     let state = AppState {
         user_service,
         auth_service,

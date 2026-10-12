@@ -1,8 +1,10 @@
 mod common;
 
+use std::time::{Duration, Instant};
+
 use axum::body::Body;
 use axum::http::{Method, Request, StatusCode, header};
-use common::{parse_json_response, setup_test_app};
+use common::{parse_json_response, setup_test_app, setup_test_app_with_lock};
 use serde_json::{Value, json};
 use tower::ServiceExt;
 
@@ -328,7 +330,6 @@ async fn test_exclusive_profile_route_and_get_user_by_id() {
     assert_eq!(login_res.status(), StatusCode::OK);
     let auth_data: AuthResponse = parse_json_response(login_res).await;
 
-    // 1. Profile route without bearer token should fail
     let no_token_res = app
         .clone()
         .oneshot(
@@ -342,7 +343,6 @@ async fn test_exclusive_profile_route_and_get_user_by_id() {
         .unwrap();
     assert_eq!(no_token_res.status(), StatusCode::UNAUTHORIZED);
 
-    // 2. Profile route with invalid bearer token should fail
     let invalid_token_res = app
         .clone()
         .oneshot(
@@ -357,7 +357,6 @@ async fn test_exclusive_profile_route_and_get_user_by_id() {
         .unwrap();
     assert_eq!(invalid_token_res.status(), StatusCode::UNAUTHORIZED);
 
-    // 3. Profile route with valid bearer token returns full data (without password), including token and refresh token
     let profile_res = app
         .clone()
         .oneshot(
@@ -393,7 +392,6 @@ async fn test_exclusive_profile_route_and_get_user_by_id() {
         Some(auth_data.refresh_token.clone())
     );
 
-    // 4. get_user_by_id (/users/{id}) returns ONLY id, name, email (no password, no token, no refresh_token)
     let get_user_res = app
         .clone()
         .oneshot(
@@ -420,7 +418,6 @@ async fn test_exclusive_profile_route_and_get_user_by_id() {
 async fn test_token_version_revocation_on_logout() {
     let app = setup_test_app().await;
 
-    // 1. Create and login user
     let register_payload = json!({
         "name": "Security User",
         "email": "security@example.com",
@@ -458,7 +455,6 @@ async fn test_token_version_revocation_on_logout() {
     assert_eq!(login_res.status(), StatusCode::OK);
     let auth_data: AuthResponse = parse_json_response(login_res).await;
 
-    // 2. Profile request with active token works (200 OK)
     let profile_before = app
         .clone()
         .oneshot(
@@ -476,7 +472,6 @@ async fn test_token_version_revocation_on_logout() {
         .unwrap();
     assert_eq!(profile_before.status(), StatusCode::OK);
 
-    // 3. User performs logout
     let logout_payload = json!({
         "refresh_token": auth_data.refresh_token
     });
@@ -494,8 +489,6 @@ async fn test_token_version_revocation_on_logout() {
         .unwrap();
     assert_eq!(logout_res.status(), StatusCode::OK);
 
-    // 4. Accessing /profile with the SAME bearer token now returns 401 Unauthorized
-    // because token_version was incremented on logout!
     let profile_after = app
         .clone()
         .oneshot(
@@ -519,3 +512,167 @@ async fn test_token_version_revocation_on_logout() {
         "Token has been revoked or session invalidated"
     );
 }
+
+#[tokio::test]
+async fn test_login_time_lock_guarantee_on_success_and_failures() {
+    let lock_ms = 200;
+    let lock_duration = Duration::from_millis(lock_ms);
+    let min_expected = Duration::from_millis(lock_ms - 15);
+    let app = setup_test_app_with_lock(lock_duration).await;
+    let register_payload = json!({
+        "name": "Lock Tester",
+        "email": "locktester@example.com",
+        "password": "securePassword123"
+    });
+    let register_res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/users")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(register_payload.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(register_res.status(), StatusCode::CREATED);
+
+    let start_success = Instant::now();
+    let success_res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/login")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "email": "locktester@example.com",
+                        "password": "securePassword123"
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let elapsed_success = start_success.elapsed();
+    assert_eq!(success_res.status(), StatusCode::OK);
+    assert!(
+        elapsed_success >= min_expected,
+        "Success response returned in {:?}, which is faster than min_expected {:?}",
+        elapsed_success,
+        min_expected
+    );
+
+    let start_wrong_pw = Instant::now();
+    let wrong_pw_res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/login")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "email": "locktester@example.com",
+                        "password": "wrongPassword123"
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let elapsed_wrong_pw = start_wrong_pw.elapsed();
+    assert_eq!(wrong_pw_res.status(), StatusCode::UNAUTHORIZED);
+    assert!(
+        elapsed_wrong_pw >= min_expected,
+        "Wrong password response returned in {:?}, which is faster than min_expected {:?}",
+        elapsed_wrong_pw,
+        min_expected
+    );
+
+    let start_no_user = Instant::now();
+    let no_user_res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/login")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "email": "nonexistent@example.com",
+                        "password": "somePassword123"
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let elapsed_no_user = start_no_user.elapsed();
+    assert_eq!(no_user_res.status(), StatusCode::UNAUTHORIZED);
+    assert!(
+        elapsed_no_user >= min_expected,
+        "Nonexistent user response returned in {:?}, which is faster than min_expected {:?}",
+        elapsed_no_user,
+        min_expected
+    );
+
+    let start_empty = Instant::now();
+    let empty_res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/login")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "email": "",
+                        "password": ""
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let elapsed_empty = start_empty.elapsed();
+    assert_eq!(empty_res.status(), StatusCode::BAD_REQUEST);
+    assert!(
+        elapsed_empty >= min_expected,
+        "Empty payload response returned in {:?}, which is faster than min_expected {:?}",
+        elapsed_empty,
+        min_expected
+    );
+
+    let start_malformed = Instant::now();
+    let malformed_res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/login")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from("{ invalid_json_syntax: true"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let elapsed_malformed = start_malformed.elapsed();
+    assert!(
+        malformed_res.status() == StatusCode::BAD_REQUEST
+            || malformed_res.status() == StatusCode::UNPROCESSABLE_ENTITY
+    );
+    assert!(
+        elapsed_malformed >= min_expected,
+        "Malformed JSON response returned in {:?}, which is faster than min_expected {:?}",
+        elapsed_malformed,
+        min_expected
+    );
+}
+

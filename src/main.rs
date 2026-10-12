@@ -15,6 +15,7 @@ async fn main() {
     let port = std::env::var("PORT").expect("PORT environment variable must be set in .env");
     std::env::var("JWT_SECRET").expect("JWT_SECRET environment variable must be set in .env");
     std::env::var("DATABASE_URL").expect("DATABASE_URL environment variable must be set in .env");
+    std::env::var("LOGIN_TIME_LOCK_MS").expect("LOGIN_TIME_LOCK_MS environment variable must be set in .env");
 
     let pool = database::init_db().await;
 
