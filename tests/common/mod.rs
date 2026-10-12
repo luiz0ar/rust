@@ -1,7 +1,7 @@
 use axum::{Router, response::Response};
 use http_body_util::BodyExt;
 use serde::de::DeserializeOwned;
-use sqlx::sqlite::SqlitePoolOptions;
+use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 
 use src::create_app;
@@ -16,35 +16,26 @@ pub async fn setup_test_app() -> Router {
         }
     }
 
-    let pool = SqlitePoolOptions::new()
-        .max_connections(1)
-        .connect("sqlite::memory:")
+    let database_url = std::env::var("TEST_DATABASE_URL")
+        .or_else(|_| std::env::var("DATABASE_URL"))
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/app_db".to_string());
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
         .await
-        .expect("Failed to create in-memory SQLite database");
+        .expect("Failed to connect to PostgreSQL test database");
 
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL,
-            token_version INTEGER NOT NULL DEFAULT 1
-        );
+    sqlx::migrate!("src/database/migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to apply database migrations for tests");
 
-        CREATE TABLE IF NOT EXISTS refresh_tokens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            token TEXT NOT NULL UNIQUE,
-            expires_at INTEGER NOT NULL,
-            created_at INTEGER NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-        "#,
-    )
-    .execute(&pool)
-    .await
-    .expect("Failed to initialize test database tables");
+    // Clean tables before tests to ensure test isolation
+    sqlx::query("TRUNCATE TABLE refresh_tokens, users RESTART IDENTITY CASCADE")
+        .execute(&pool)
+        .await
+        .expect("Failed to truncate tables for testing");
 
     let user_repo = UserRepository::new(pool.clone());
     let refresh_token_repo = RefreshTokenRepository::new(pool);

@@ -6,8 +6,8 @@ use utoipa::OpenApi;
 
 use crate::handlers::{auth_handler, user_handler};
 
-/// Responsabilidade única: Orquestrador da especificação OpenAPI raiz,
-/// combinando rotas, tags, segurança e schemas via composição.
+/// Single Responsibility: Root OpenAPI specification orchestrator,
+/// combining paths, tags, security, and schemas via composition.
 #[derive(OpenApi)]
 #[openapi(
     paths(
@@ -22,15 +22,15 @@ use crate::handlers::{auth_handler, user_handler};
         user_handler::delete_user,
     ),
     tags(
-        (name = "Auth", description = "Operações de autenticação, renovação e perfil"),
-        (name = "Users", description = "Gerenciamento e consulta de usuários")
+        (name = "Auth", description = "Authentication, token refresh, and profile operations"),
+        (name = "Users", description = "User management and retrieval operations")
     ),
     modifiers(&SecurityAddon)
 )]
 pub struct ApiDoc;
 
 impl ApiDoc {
-    /// Compõe a especificação final aplicando o merge dos submódulos
+    /// Composes the final specification by merging submodules
     pub fn build_spec() -> utoipa::openapi::OpenApi {
         let mut doc = Self::openapi();
         doc.merge(schemas::ApiSchemas::openapi());

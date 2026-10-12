@@ -1,11 +1,9 @@
 FROM rust:1-slim
 
-# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Install cargo-watch for live reload during development
 RUN cargo install cargo-watch
 
 WORKDIR /app
@@ -15,5 +13,4 @@ ENV HOST=0.0.0.0 \
 
 EXPOSE 3000
 
-# Watch for file changes, ignoring local SQLite database files to prevent infinite reload loops
-CMD ["cargo", "watch", "-i", "sqlite.db*", "-x", "run"]
+CMD ["cargo", "watch", "-x", "run"]

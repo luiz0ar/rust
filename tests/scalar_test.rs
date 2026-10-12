@@ -70,7 +70,7 @@ async fn test_openapi_spec_json_endpoint() {
     let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
     let spec: Value = serde_json::from_slice(&body_bytes).expect("Valid JSON spec");
 
-    // Validação de versão e paths
+    // OpenAPI version and paths validation
     assert!(spec.get("openapi").is_some());
     let paths = spec["paths"].as_object().expect("paths object");
     assert!(paths.contains_key("/login"), "Missing /login");
@@ -80,7 +80,7 @@ async fn test_openapi_spec_json_endpoint() {
     assert!(paths.contains_key("/users"), "Missing /users");
     assert!(paths.contains_key("/users/{id}"), "Missing /users/{{id}}");
 
-    // Validação dos schemas registrados via schemas.rs
+    // Validation of registered schemas via schemas.rs
     let schemas = spec["components"]["schemas"]
         .as_object()
         .expect("schemas object");
@@ -99,7 +99,7 @@ async fn test_openapi_spec_json_endpoint() {
         "Missing ErrorResponse schema"
     );
 
-    // Validação do security scheme configurado via security.rs
+    // Validation of security scheme configured via security.rs
     let security_schemes = spec["components"]["securitySchemes"]
         .as_object()
         .expect("securitySchemes object");
@@ -114,7 +114,7 @@ async fn test_openapi_spec_json_endpoint() {
 
 #[test]
 fn test_srp_schemas_module_isolation() {
-    // Validação unitária de SRP: ApiSchemas possui os componentes registrados de forma isolada
+    // Unit SRP validation: ApiSchemas has registered components in isolation
     let schemas_doc = ApiSchemas::openapi();
     let components = schemas_doc.components.expect("Components must be present");
     assert!(components.schemas.contains_key("LoginDto"));

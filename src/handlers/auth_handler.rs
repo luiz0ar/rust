@@ -10,12 +10,12 @@ use crate::models::user::{LoginDto, UserProfile};
     post,
     path = "/login",
     tag = "Auth",
-    summary = "Login de usuário",
-    description = "Autentica usuário por e-mail e senha, retornando tokens JWT.",
+    summary = "User login",
+    description = "Authenticates user with email and password, returning JWT access and refresh tokens.",
     request_body = LoginDto,
     responses(
-        (status = 200, description = "Login efetuado com sucesso", body = AuthResponse),
-        (status = 401, description = "Credenciais inválidas", body = ErrorResponse)
+        (status = 200, description = "Login successful", body = AuthResponse),
+        (status = 401, description = "Invalid credentials", body = ErrorResponse)
     )
 )]
 pub async fn login(
@@ -30,12 +30,12 @@ pub async fn login(
     post,
     path = "/refresh",
     tag = "Auth",
-    summary = "Renovação de tokens",
-    description = "Emite um novo par de tokens a partir de um refresh token válido.",
+    summary = "Refresh tokens",
+    description = "Issues a new token pair using a valid refresh token.",
     request_body = RefreshTokenDto,
     responses(
-        (status = 200, description = "Tokens renovados com sucesso", body = AuthResponse),
-        (status = 401, description = "Refresh token inválido ou expirado", body = ErrorResponse)
+        (status = 200, description = "Tokens refreshed successfully", body = AuthResponse),
+        (status = 401, description = "Invalid or expired refresh token", body = ErrorResponse)
     )
 )]
 pub async fn refresh(
@@ -50,12 +50,12 @@ pub async fn refresh(
     post,
     path = "/logout",
     tag = "Auth",
-    summary = "Logout de usuário",
-    description = "Revoga o refresh token e encerra a sessão ativa.",
+    summary = "User logout",
+    description = "Revokes the refresh token and ends the active session.",
     request_body = RefreshTokenDto,
     responses(
-        (status = 200, description = "Logout efetuado com sucesso", body = MessageResponse),
-        (status = 401, description = "Token inválido", body = ErrorResponse)
+        (status = 200, description = "Logout successful", body = MessageResponse),
+        (status = 401, description = "Invalid token", body = ErrorResponse)
     )
 )]
 pub async fn logout(
@@ -72,15 +72,15 @@ pub async fn logout(
     get,
     path = "/profile",
     tag = "Auth",
-    summary = "Perfil do usuário",
-    description = "Retorna os dados do perfil do usuário autenticado via Bearer Token.",
+    summary = "User profile",
+    description = "Returns profile details for the authenticated user via Bearer token.",
     security(
         ("bearer_auth" = [])
     ),
     responses(
-        (status = 200, description = "Perfil retornado com sucesso", body = UserProfile),
-        (status = 401, description = "Token ausente ou inválido", body = ErrorResponse),
-        (status = 404, description = "Usuário não encontrado", body = ErrorResponse)
+        (status = 200, description = "Profile retrieved successfully", body = UserProfile),
+        (status = 401, description = "Missing or invalid token", body = ErrorResponse),
+        (status = 404, description = "User not found", body = ErrorResponse)
     )
 )]
 pub async fn profile(

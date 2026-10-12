@@ -20,13 +20,13 @@ pub struct AppState {
     post,
     path = "/users",
     tag = "Users",
-    summary = "Criar usuário",
-    description = "Cadastra um novo usuário no sistema.",
+    summary = "Create user",
+    description = "Registers a new user in the system.",
     request_body = CreateUserDto,
     responses(
-        (status = 201, description = "Usuário criado com sucesso", body = User),
-        (status = 400, description = "Dados de requisição inválidos", body = ErrorResponse),
-        (status = 409, description = "Usuário ou e-mail já existente", body = ErrorResponse)
+        (status = 201, description = "User created successfully", body = User),
+        (status = 400, description = "Invalid request payload", body = ErrorResponse),
+        (status = 409, description = "User or email already exists", body = ErrorResponse)
     )
 )]
 pub async fn create_user(
@@ -41,10 +41,10 @@ pub async fn create_user(
     get,
     path = "/users",
     tag = "Users",
-    summary = "Listar usuários",
-    description = "Retorna a lista de todos os usuários cadastrados.",
+    summary = "List users",
+    description = "Returns a list of all registered users.",
     responses(
-        (status = 200, description = "Lista de usuários retornada", body = Vec<User>)
+        (status = 200, description = "Users retrieved successfully", body = Vec<User>)
     )
 )]
 pub async fn list_users(State(state): State<AppState>) -> Result<Json<Vec<User>>, AppError> {
@@ -56,14 +56,14 @@ pub async fn list_users(State(state): State<AppState>) -> Result<Json<Vec<User>>
     get,
     path = "/users/{id}",
     tag = "Users",
-    summary = "Buscar usuário por ID",
-    description = "Retorna os detalhes de um usuário pelo seu ID.",
+    summary = "Get user by ID",
+    description = "Returns user details by ID.",
     params(
-        ("id" = i64, Path, description = "ID único do usuário")
+        ("id" = i64, Path, description = "Unique user ID")
     ),
     responses(
-        (status = 200, description = "Usuário encontrado com sucesso", body = User),
-        (status = 404, description = "Usuário não encontrado", body = ErrorResponse)
+        (status = 200, description = "User found successfully", body = User),
+        (status = 404, description = "User not found", body = ErrorResponse)
     )
 )]
 pub async fn get_user(
@@ -78,15 +78,15 @@ pub async fn get_user(
     put,
     path = "/users/{id}",
     tag = "Users",
-    summary = "Atualizar usuário",
-    description = "Atualiza os dados cadastrais de um usuário existente.",
+    summary = "Update user",
+    description = "Updates an existing user's information.",
     params(
-        ("id" = i64, Path, description = "ID único do usuário")
+        ("id" = i64, Path, description = "Unique user ID")
     ),
     request_body = UpdateUserDto,
     responses(
-        (status = 200, description = "Usuário atualizado com sucesso", body = User),
-        (status = 404, description = "Usuário não encontrado", body = ErrorResponse)
+        (status = 200, description = "User updated successfully", body = User),
+        (status = 404, description = "User not found", body = ErrorResponse)
     )
 )]
 pub async fn update_user(
@@ -102,14 +102,14 @@ pub async fn update_user(
     delete,
     path = "/users/{id}",
     tag = "Users",
-    summary = "Excluir usuário",
-    description = "Remove um usuário do sistema pelo ID.",
+    summary = "Delete user",
+    description = "Deletes a user from the system by ID.",
     params(
-        ("id" = i64, Path, description = "ID único do usuário")
+        ("id" = i64, Path, description = "Unique user ID")
     ),
     responses(
-        (status = 200, description = "Usuário excluído com sucesso", body = MessageResponse),
-        (status = 404, description = "Usuário não encontrado", body = ErrorResponse)
+        (status = 200, description = "User deleted successfully", body = MessageResponse),
+        (status = 404, description = "User not found", body = ErrorResponse)
     )
 )]
 pub async fn delete_user(
