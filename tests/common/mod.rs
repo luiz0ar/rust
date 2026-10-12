@@ -48,7 +48,10 @@ pub async fn setup_test_app() -> Router {
 
     let user_repo = UserRepository::new(pool.clone());
     let refresh_token_repo = RefreshTokenRepository::new(pool);
-    let user_service = Arc::new(UserService::new(user_repo.clone(), refresh_token_repo.clone()));
+    let user_service = Arc::new(UserService::new(
+        user_repo.clone(),
+        refresh_token_repo.clone(),
+    ));
     let auth_service = Arc::new(AuthService::new(user_repo, refresh_token_repo));
     let state = AppState {
         user_service,
@@ -58,6 +61,7 @@ pub async fn setup_test_app() -> Router {
     create_app(state)
 }
 
+#[allow(dead_code)]
 pub async fn parse_json_response<T: DeserializeOwned>(response: Response) -> T {
     let bytes = response
         .into_body()

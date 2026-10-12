@@ -110,11 +110,10 @@ impl UserService {
         }
 
         let claims = verify_token(clean_token)?;
-        let user = self
-            .repo
-            .find_by_id(claims.sub)
-            .await?
-            .ok_or_else(|| AppError::NotFound(format!("User with id {} not found", claims.sub)))?;
+        let user =
+            self.repo.find_by_id(claims.sub).await?.ok_or_else(|| {
+                AppError::NotFound(format!("User with id {} not found", claims.sub))
+            })?;
 
         if claims.token_version != user.token_version {
             return Err(AppError::Unauthorized(

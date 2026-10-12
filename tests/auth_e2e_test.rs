@@ -519,5 +519,3 @@ async fn test_token_version_revocation_on_logout() {
         "Token has been revoked or session invalidated"
     );
 }
-
-

@@ -63,11 +63,7 @@ pub fn generate_access_token(
 }
 
 #[allow(dead_code)]
-pub fn generate_token(
-    user_id: i64,
-    email: &str,
-    token_version: i64,
-) -> Result<String, AppError> {
+pub fn generate_token(user_id: i64, email: &str, token_version: i64) -> Result<String, AppError> {
     generate_access_token(user_id, email, token_version)
 }
 
